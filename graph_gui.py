@@ -14,8 +14,26 @@ class SimpleGraphingCalculator:
         # Data store for user information
         self.user_data = {}
 
-        # Initial screen for sign-in
-        self.signin_screen()
+        # Initial screen with buttons for options
+        self.menu_screen()
+
+    def menu_screen(self):
+        self.clear_root()
+
+        # Welcome message and instructions
+        welcome_label = tk.Label(self.root, text="Welcome to the Graphing Calculator!", font=("Arial", 16))
+        welcome_label.pack(pady=20)
+
+        instructions_label = tk.Label(self.root, text="Please choose an option below.", font=("Arial", 12))
+        instructions_label.pack(pady=10)
+
+        # Button for Sign In
+        signin_button = tk.Button(self.root, text="Sign In", width=20, height=2, command=self.signin_screen)
+        signin_button.pack(pady=10)
+
+        # Button for Exit
+        exit_button = tk.Button(self.root, text="Exit", width=20, height=2, command=self.root.quit)
+        exit_button.pack(pady=10)
 
     def signin_screen(self):
         self.clear_root()

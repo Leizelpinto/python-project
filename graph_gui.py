@@ -2,72 +2,134 @@ import tkinter as tk
 from tkinter import messagebox
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.animation as animation
+import re
 
-# Data store
-user_data = {}
+class SimpleGraphingCalculator:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Simple Graphing Calculator")
 
-# First Page - Sign In
-def open_equation_page():
-    name = name_entry.get().strip()
-    email = email_entry.get().strip()
-    
-    if not name or not email:
-        messagebox.showwarning("Input Error", "Please enter both name and email.")
-        return
-    
-    user_data["name"] = name
-    user_data["email"] = email
-    
-    # Hide sign-in window and open equation window
-    signin_window.withdraw()
-    open_graph_window()
+        # Data store for user information
+        self.user_data = {}
 
-# Second Page - Equation Input
-def open_graph_window():
-    def plot():
-        equation = equation_entry.get()
+        # Initial screen for sign-in
+        self.signin_screen()
+
+    def signin_screen(self):
+        self.clear_root()
+
+        tk.Label(self.root, text="Enter your name:").pack(pady=5)
+        self.name_entry = tk.Entry(self.root, width=40)
+        self.name_entry.pack(pady=5)
+
+        tk.Label(self.root, text="Enter your email:").pack(pady=5)
+        self.email_entry = tk.Entry(self.root, width=40)
+        self.email_entry.pack(pady=5)
+
+        signin_button = tk.Button(self.root, text="Continue", command=self.open_graph_screen)
+        signin_button.pack(pady=15)
+
+    def open_graph_screen(self):
+        name = self.name_entry.get().strip()
+        email = self.email_entry.get().strip()
+
+        if not name or not email:
+            messagebox.showwarning("Input Error", "Please enter both name and email.")
+            return
+
+        self.user_data["name"] = name
+        self.user_data["email"] = email
+
+        self.clear_root()
+
+        welcome_label = tk.Label(self.root, text=f"Welcome, {self.user_data['name']}!", font=("Arial", 14))
+        welcome_label.pack(pady=10)
+
+        tk.Label(self.root, text="Enter an equation in terms of x (e.g., x**2 + 2*x - 1):").pack(pady=5)
+        self.entry = tk.Entry(self.root, width=40)
+        self.entry.pack(pady=5)
+
+        self.plot_button = tk.Button(self.root, text="Plot Graph", command=self.plot_graph)
+        self.plot_button.pack(pady=10)
+
+        # Figure for matplotlib plot
+        self.fig, self.ax = plt.subplots()
+        self.ax.grid(True)
+
+        # Embed matplotlib figure into Tkinter
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+        self.ball = None
+        self.ani = None
+
+    def clear_root(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+    def preprocess_equation(self, equation):
+        # Replace mathematical functions with their numpy equivalents
+        replacements = {
+            r"sin": "np.sin",
+            r"cos": "np.cos",
+            r"tan": "np.tan",
+            r"log": "np.log",
+            r"exp": "np.exp",
+            r"sqrt": "np.sqrt",
+            r"\^": "**"  # Replace ^ with ** for exponentiation
+        }
+        for pattern, replacement in replacements.items():
+            equation = re.sub(pattern, replacement, equation)
+        return equation
+
+    def animate_ball(self, x, y):
+        if self.ball is not None:
+            self.ball.remove()  # Remove the previous ball
+
+        self.ball, = self.ax.plot([x], [y], 'ro', label="Ball")  # Add the ball
+        self.canvas.draw()
+
+    def start_animation(self, x_vals, y_vals):
+        def update(frame):
+            self.animate_ball(x_vals[frame], y_vals[frame])
+
+        if self.ani is not None:
+            self.ani.event_source.stop()
+
+        self.ani = animation.FuncAnimation(self.fig, update, frames=len(x_vals), interval=1, repeat=False)  # Faster interval
+
+    def plot_graph(self):
+        equation = self.entry.get()
+        if not equation:
+            messagebox.showerror("Error", "Please enter an equation to plot.")
+            return
+
         try:
-            x = np.linspace(-10, 10, 1000)
-            y = eval(equation, {"x": x, "np": np, "__builtins__": {}})
-            plt.figure(figsize=(8, 5))
-            plt.plot(x, y, label=f"y = {equation}")
-            plt.title(f"{user_data['name']}'s Graph of y = {equation}")
-            plt.xlabel("x")
-            plt.ylabel("y")
-            plt.grid(True)
-            plt.legend()
-            plt.axhline(0, color='black', linewidth=0.5)
-            plt.axvline(0, color='black', linewidth=0.5)
-            plt.show()
+            # Preprocess the equation to handle complex expressions
+            processed_equation = self.preprocess_equation(equation)
+
+            # Prepare data for the plot
+            x = np.linspace(-10, 10, 1000)  # Generate X values
+            y = eval(processed_equation, {"x": x, "np": np})  # Safely evaluate the equation
+
+            self.ax.clear()  # Clear previous plots
+            self.ax.plot(x, y, label=equation)
+            self.ax.set_title(f"{self.user_data['name']}'s Graph of y = " + equation)
+            self.ax.legend()
+            self.ax.grid(True)
+
+            # Start the ball animation
+            self.start_animation(x, y)
+
+            self.canvas.draw()  # Redraw the canvas
+
         except Exception as e:
-            messagebox.showerror("Error", f"Invalid equation:\n{e}")
+            messagebox.showerror("Error", f"Invalid equation: {e}")
 
-    graph_window = tk.Toplevel()
-    graph_window.title("Enter Equation")
-
-    welcome_label = tk.Label(graph_window, text=f"Welcome, {user_data['name']}!", font=("Arial", 14))
-    welcome_label.pack(pady=10)
-
-    tk.Label(graph_window, text="Enter an equation in terms of x (e.g., x**2 + 2*x - 1):").pack(pady=5)
-    equation_entry = tk.Entry(graph_window, width=40)
-    equation_entry.pack(pady=5)
-
-    plot_button = tk.Button(graph_window, text="Plot Graph", command=plot)
-    plot_button.pack(pady=10)
-
-# Main window
-signin_window = tk.Tk()
-signin_window.title("Sign In")
-
-tk.Label(signin_window, text="Enter your name:").pack(pady=5)
-name_entry = tk.Entry(signin_window, width=40)
-name_entry.pack(pady=5)
-
-tk.Label(signin_window, text="Enter your email:").pack(pady=5)
-email_entry = tk.Entry(signin_window, width=40)
-email_entry.pack(pady=5)
-
-signin_button = tk.Button(signin_window, text="Continue", command=open_equation_page)
-signin_button.pack(pady=15)
-
-signin_window.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SimpleGraphingCalculator(root)
+    root.mainloop()

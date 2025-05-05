@@ -56,6 +56,11 @@ class SimpleGraphingCalculator:
         # Continue button
         tk.Button(self.root, text="Continue", bg="#4caf50", fg="white", command=self.open_graph_screen).pack(pady=15)
 
+    def validate_email(self, email):
+        """Validate email format."""
+        email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        return re.match(email_regex, email) is not None
+
     def open_graph_screen(self):
         name = self.name_entry.get().strip()
         email = self.email_entry.get().strip()
@@ -63,6 +68,10 @@ class SimpleGraphingCalculator:
 
         if not name or not email or not favorite_color:
             messagebox.showwarning("Input Error", "Please fill out all fields.")
+            return
+
+        if not self.validate_email(email):
+            messagebox.showerror("Invalid Email", "Please enter a valid email address (e.g., example@gmail.com).")
             return
 
         self.user_data["name"] = name
@@ -82,6 +91,9 @@ class SimpleGraphingCalculator:
         # Buttons for graph actions
         tk.Button(self.root, text="Plot Graph", bg=favorite_color, fg="white", command=self.plot_graph).pack(pady=10)
         tk.Button(self.root, text="Clear Previous Graph", bg="#ff9800", fg="white", command=self.clear_graph).pack(pady=10)
+
+        # Exit button
+        tk.Button(self.root, text="Exit", bg="#f44336", fg="white", command=self.root.destroy).pack(pady=10)
 
         # Matplotlib figure
         self.fig, self.ax = plt.subplots()
